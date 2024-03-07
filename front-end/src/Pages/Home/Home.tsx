@@ -1,27 +1,18 @@
-import React,{useState,useEffect} from 'react';
-import './Home.scss';
-import {addUser} from "../../store/slices/userInfoSlice"
-import {RootState} from "../../store/store"
-import { useDispatch ,useSelector} from "react-redux";
+import React, { useState, useEffect } from "react";
+import "./Home.scss";
+import { addUser } from "../../store/slices/userInfoSlice";
+import { RootState } from "../../store/store";
+import { useDispatch, useSelector } from "react-redux";
 
+const Home: React.FC = (props) => {
+  const userInfo: UserInfo = useSelector((state: RootState) => state.userInfo);
+  const dispatch = useDispatch();
 
+  useEffect(() => {
+    // console.log(userInfo);
+  }, [userInfo]);
 
- const Home:React.FC=(props) =>{
-  const userInfo: UserInfo = useSelector(
-    (state: RootState) => state.userInfo
-  );
-    const dispatch = useDispatch();
+  return <div>HOME</div>;
+};
 
-    useEffect(() => {
-      console.log(userInfo); 
-    }, [userInfo]); 
-  
-  
-    return (
-      <div>
-        HOME
-      </div>
-    );
-  };
-  
 export default Home;

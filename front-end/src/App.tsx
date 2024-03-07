@@ -66,17 +66,20 @@ function App() {
       <Routes>
         <Route path="/" caseSensitive element={<Home />} />
         {/* REmove in production*/}
-        {/* <Route
+        <Route
           path="/login"
           element={userInfo.isLoggedIn ? <Navigate to="/" /> : <LogIn />}
-        /> */}
-        <Route path="/login" element={<LogIn />} />
+        />
+        {/* <Route path="/login" element={<LogIn />} /> */}
         <Route path="/callback" element={<CallbackPage />} />
         <Route
           path="/live"
           element={userInfo.isLoggedIn ? <Live /> : <Navigate to="/login" />}
         />
-        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/signup"
+          element={userInfo.isLoggedIn ? <Navigate to="/" /> : <Signup />}
+        />
       </Routes>
     </div>
   );
