@@ -4,12 +4,14 @@ import { addUser } from "../../store/slices/userInfoSlice";
 import { RootState } from "../../store/store";
 import { useDispatch, useSelector } from "react-redux";
 import io from "socket.io-client";
+import Whiteboard from "../../Components/Whiteboard/Whiteboard";
 
 const socket = io(`${process.env.REACT_APP_SERVER_LINK}`);
 const Live: React.FC = (props) => {
   const userInfo: UserInfo = useSelector((state: RootState) => state.userInfo);
   const [message, setMessage] = useState("");
   const [receivedMessages, setReceivedMessages] = useState([""]);
+  const [canvasData, setCanvasData] = useState("");
 
   const dispatch = useDispatch();
 
@@ -30,13 +32,9 @@ const Live: React.FC = (props) => {
     //   socket.disconnect();
     // };
   }, [receivedMessages]);
-
-  const sendMessage = () => {
-    if (message.trim() !== "") {
-      socket.emit("message", message);
-      setMessage(message);
-    }
-  };
+  // const handleChildData = (data) => {
+  //   setChildData(data);
+  // };
 
   return (
     <div>
@@ -50,12 +48,7 @@ const Live: React.FC = (props) => {
         ))}
       </div>
       <div>
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button onClick={sendMessage}>Send</button>
+        <Whiteboard />
       </div>
     </div>
   );
