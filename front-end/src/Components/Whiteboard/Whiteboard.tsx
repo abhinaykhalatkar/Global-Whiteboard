@@ -1,71 +1,60 @@
 import React, { useState, useEffect } from "react";
 import { fabric } from "fabric";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
-
-enum canvasInputMethod {
-  None,
-  Pen,
-  Brush,
-  Shape,
-}
-class ExtendedPencilBrush extends fabric.PencilBrush {
-  id: string;
-  constructor(canvas: fabric.Canvas, id: string) {
-    super(canvas);
-    this.id = id;
-  }
-}
 
 interface WhiteboardProps {}
 const socket = io(`${process.env.REACT_APP_SERVER_LINK}`);
 const Whiteboard: React.FC<WhiteboardProps> = () => {
-  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
-  const [inputMethod, setInputMethod] = useState<canvasInputMethod>(
-    canvasInputMethod.None
+  const [canvas, setCanvas] = useState<fabric.Canvas>(
+    new fabric.Canvas("whiteboard", {
+      height: 1000,
+      width: 1000,
+      backgroundColor: "gray",
+    })
   );
 
   const setBlankCanvas = () => {
-    // if (!canvas) return;
-    // canvas.remove(...canvas.getObjects());
-
     setCanvas(
       new fabric.Canvas("whiteboard", {
         height: 1000,
         width: 1000,
-        backgroundColor: "white",
+        backgroundColor: "gray",
       })
     );
   };
+  const setBrush = (color: string = "#000000", width: number = 5) => {
+    console.log(canvas);
+    if (!canvas) return;
+    const brush = new fabric.PencilBrush(canvas);
+    brush.color = color;
+    brush.width = width;
+    canvas.freeDrawingBrush = brush;
+    canvas.isDrawingMode = true;
+  };
+  const setSelect = () => {
+    if (!canvas) return;
+    canvas.isDrawingMode = false;
+  };
+  const handleClearCanvas = () => {
+    canvas.remove(...canvas.getObjects());
+    canvas.renderAll();
+  };
+
   useEffect(() => {
     setBlankCanvas();
   }, []);
-
   useEffect(() => {
     if (!canvas) return;
-    if (inputMethod === canvasInputMethod.Brush) {
-      let uuid = uuidv4();
-      console.log(uuid);
-      const brush = new fabric.PencilBrush(canvas);
-      brush.color = "#000000";
-      brush.width = 10;
-      canvas.freeDrawingBrush = brush;
-      canvas.isDrawingMode = true;
 
-      canvas.on("path:created", (e: any) => {
-        console.log(canvas);
-        const path = e.path as fabric.Path;
-        if (path) {
-          socket.emit("drawing", path);
-        }
-      });
-    } else {
-      canvas.isDrawingMode = false;
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    }
-  }, [inputMethod, canvas]);
+    canvas.on("path:created", (e: any) => {
+      console.log(canvas);
+      const path = e.path as fabric.Path;
+      if (path) {
+        socket.emit("drawing", path);
+      }
+    });
 
-  useEffect(() => {
     socket.on("connect", () => {
       console.log("Connected to server");
     });
@@ -73,25 +62,26 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
       console.log("Disconnected from server");
     });
     socket.on("clearCanvas", (data) => {
-      setBlankCanvas();
+      handleClearCanvas();
     });
     socket.on("drawing", (data: fabric.Path) => {
       if (!canvas) return;
       const path = new fabric.Path(data.path, { ...data });
       canvas.add(path);
-      // canvas.renderAll();
+      canvas.renderAll();
     });
   }, [canvas]);
-
-  const setBrush = () => {
-    if (!canvas) return;
-    setInputMethod(canvasInputMethod.Brush);
-  };
 
   return (
     <div>
       <div>
-        <button type="button" name="pen" onClick={setBrush}>
+        <button
+          type="button"
+          name="pen"
+          onClick={() => {
+            setBrush("red", 7);
+          }}
+        >
           PEN
         </button>
         <button
@@ -99,18 +89,12 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
           name="Clear"
           onClick={() => {
             socket.emit("clearCanvas");
-            setBlankCanvas();
+            handleClearCanvas();
           }}
         >
           Clear Canvas
         </button>
-        <button
-          type="button"
-          name="Select"
-          onClick={() => {
-            setInputMethod(canvasInputMethod.None);
-          }}
-        >
+        <button type="button" name="Select" onClick={setSelect}>
           Select
         </button>
       </div>
