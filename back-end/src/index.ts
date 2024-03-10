@@ -124,15 +124,19 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 io.on("connection", (socket) => {
-  console.log("A user connected");
+  // console.log("A user connected");
 
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    // console.log("User disconnected");
   });
-  socket.on("message", (data) => {
-    console.log(data);
-    // Broadcast the message to all connected clients except the sender
-    socket.broadcast.emit("message", data);
+  socket.on("drawing", (data) => {
+    // NOT TO USER
+    socket.broadcast.emit("drawing", data);
+  });
+  socket.on("clearCanvas", (data) => {
+    console.log("got it");
+    // NOT TO USER
+    socket.broadcast.emit("clearCanvas", data);
   });
 });
 

@@ -64,7 +64,11 @@ function App() {
       </nav>
 
       <Routes>
-        <Route path="/" caseSensitive element={<Home />} />
+        <Route
+          path="/"
+          caseSensitive
+          element={userInfo.isLoggedIn ? <Navigate to="/live" /> : <Home />}
+        />
         {/* REmove in production*/}
         <Route
           path="/login"

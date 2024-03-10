@@ -1,53 +1,120 @@
 import React, { useState, useEffect } from "react";
 import { fabric } from "fabric";
+import { io, Socket } from "socket.io-client";
+import { v4 as uuidv4 } from "uuid";
 
-const Whiteboard: React.FC = () => {
+enum canvasInputMethod {
+  None,
+  Pen,
+  Brush,
+  Shape,
+}
+class ExtendedPencilBrush extends fabric.PencilBrush {
+  id: string;
+  constructor(canvas: fabric.Canvas, id: string) {
+    super(canvas);
+    this.id = id;
+  }
+}
+
+interface WhiteboardProps {}
+const socket = io(`${process.env.REACT_APP_SERVER_LINK}`);
+const Whiteboard: React.FC<WhiteboardProps> = () => {
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+  const [inputMethod, setInputMethod] = useState<canvasInputMethod>(
+    canvasInputMethod.None
+  );
 
+  const setBlankCanvas = () => {
+    // if (!canvas) return;
+    // canvas.remove(...canvas.getObjects());
+
+    setCanvas(
+      new fabric.Canvas("whiteboard", {
+        height: 1000,
+        width: 1000,
+        backgroundColor: "white",
+      })
+    );
+  };
   useEffect(() => {
-    const canvasInstance = new fabric.Canvas("whiteboard", {
-      width: 800,
-      height: 800,
-      backgroundColor: "#ffffff",
-    });
-    setCanvas(canvasInstance);
+    setBlankCanvas();
   }, []);
 
   useEffect(() => {
-    if (canvas) {
+    if (!canvas) return;
+    if (inputMethod === canvasInputMethod.Brush) {
+      let uuid = uuidv4();
+      console.log(uuid);
       const brush = new fabric.PencilBrush(canvas);
       brush.color = "#000000";
-      brush.width = 2;
+      brush.width = 10;
       canvas.freeDrawingBrush = brush;
       canvas.isDrawingMode = true;
-    }
-    console.log(canvas);
-  }, [canvas]);
-  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (canvas) {
-      const pointer = canvas.getPointer(event.nativeEvent);
-      const circle = new fabric.Circle({
-        radius: 20,
-        fill: "red",
-        left: pointer.x,
-        top: pointer.y,
+
+      canvas.on("path:created", (e: any) => {
+        console.log(canvas);
+        const path = e.path as fabric.Path;
+        if (path) {
+          socket.emit("drawing", path);
+        }
       });
-      canvas.add(circle);
+    } else {
+      canvas.isDrawingMode = false;
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     }
+  }, [inputMethod, canvas]);
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("Connected to server");
+    });
+    socket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+    socket.on("clearCanvas", (data) => {
+      setBlankCanvas();
+    });
+    socket.on("drawing", (data: fabric.Path) => {
+      if (!canvas) return;
+      const path = new fabric.Path(data.path, { ...data });
+      canvas.add(path);
+      // canvas.renderAll();
+    });
+  }, [canvas]);
+
+  const setBrush = () => {
+    if (!canvas) return;
+    setInputMethod(canvasInputMethod.Brush);
   };
-  //   const handleDrawing = () => {
-  //     if (canvas) {
-  //       const brush = new fabric.PencilBrush(canvas);
-  //       brush.color = "#000000"; // Set pen color
-  //       brush.width = 2; // Set pen width
-  //       canvas.freeDrawingBrush = brush;
-  //       canvas.isDrawingMode = true;
-  //     }
-  //   };
 
   return (
     <div>
-      <canvas id="whiteboard" onMouseDown={handleMouseDown}></canvas>
+      <div>
+        <button type="button" name="pen" onClick={setBrush}>
+          PEN
+        </button>
+        <button
+          type="button"
+          name="Clear"
+          onClick={() => {
+            socket.emit("clearCanvas");
+            setBlankCanvas();
+          }}
+        >
+          Clear Canvas
+        </button>
+        <button
+          type="button"
+          name="Select"
+          onClick={() => {
+            setInputMethod(canvasInputMethod.None);
+          }}
+        >
+          Select
+        </button>
+      </div>
+      <canvas id="whiteboard"></canvas>
     </div>
   );
 };
