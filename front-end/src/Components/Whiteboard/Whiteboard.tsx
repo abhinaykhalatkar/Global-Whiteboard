@@ -48,17 +48,14 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
   useEffect(() => {
     if (!canvas) return;
     canvas.on("object:modified", (e: any) => {
-      // "here"
-      console.log(e);
+      socket.emit("drawMoved", e);
     });
     canvas.on("path:created", (e: any) => {
-      console.log("created emitted");
       const path = e.path as fabric.Path;
       if (path) {
         socket.emit("drawing", path);
       }
     });
-
     socket.on("connect", () => {
       console.log("Connected to server");
     });
@@ -69,7 +66,6 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
       handleClearCanvas();
     });
     socket.on("drawing", (data: fabric.Path) => {
-      if (!canvas) return;
       const path = new fabric.Path(data.path, { ...data });
       canvas.add(path);
       canvas.renderAll();
