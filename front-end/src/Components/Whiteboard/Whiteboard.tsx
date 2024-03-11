@@ -24,17 +24,18 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     );
   };
   const setBrush = (color: string = "#000000", width: number = 5) => {
-    console.log(canvas);
     if (!canvas) return;
     const brush = new fabric.PencilBrush(canvas);
     brush.color = color;
     brush.width = width;
+    canvas.selection = false;
     canvas.freeDrawingBrush = brush;
     canvas.isDrawingMode = true;
   };
   const setSelect = () => {
     if (!canvas) return;
     canvas.isDrawingMode = false;
+    canvas.selection = true;
   };
   const handleClearCanvas = () => {
     canvas.remove(...canvas.getObjects());
@@ -46,9 +47,12 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
   }, []);
   useEffect(() => {
     if (!canvas) return;
-
+    canvas.on("object:modified", (e: any) => {
+      // "here"
+      console.log(e);
+    });
     canvas.on("path:created", (e: any) => {
-      console.log(canvas);
+      console.log("created emitted");
       const path = e.path as fabric.Path;
       if (path) {
         socket.emit("drawing", path);
