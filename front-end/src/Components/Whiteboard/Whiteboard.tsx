@@ -82,10 +82,8 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
         // canvas.renderAll();
         if (e?.transform?.target?._objects) {
           //for multi object
-          console.log(e.transform.target._objects);
           let objects: CustomFabricObject[] = e.transform.target
             ._objects as CustomFabricObject[];
-          console.log(objects);
           socket.emit(
             "drawMoved",
             objects.map((el) => {
@@ -102,11 +100,9 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
         }
       }
     );
-
+    //event socket listener
     socket.on("drawMoved", (data: recivedObjectData[] | recivedObjectData) => {
-      console.log(data);
       if (Array.isArray(data)) {
-        console.log(data.length);
         for (let i = 0; i < data.length; i++) {
           findObjectByUuid(canvas.getObjects("path"), data[i].target)?.set({
             ...data[i].newPosition,
@@ -117,12 +113,9 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
           canvas.getObjects("path"),
           data.target
         );
-        console.log(data);
-        objToMove?.set({ ...data.newPosition });
-        canvas.renderAll();
-      }
 
-      // objToMove?.set({ ...data.newPosition });
+        objToMove?.set({ ...data.newPosition });
+      }
       canvas.renderAll();
     });
     //canvas event
