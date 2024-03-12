@@ -52,46 +52,21 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     setBlankCanvas();
   }, []);
   useEffect(() => {
-    if (!canvas) return;
+    // if (!canvas) return;
     canvas.on("object:modified", (e: any) => {
-      canvas.renderAll();
+      // canvas.renderAll();
       socket.emit("drawMoved", {
         target: e.target.uuidv4,
-        newPosition: e.transform,
+        newPosition: e.transform.target,
       });
-      let movedObject = findObjectByUuid(
-        canvas.getObjects("path"),
-        e.target.uuidv4
-      );
-      console.log(movedObject);
-      // let newPosition = e.transform;
-      // console.log(newPosition);
     });
     socket.on("drawMoved", (data) => {
-      let newPosition = data.newPosition;
-
       let objToMove: any = findObjectByUuid(
         canvas.getObjects("path"),
         data.target
       );
-      let newLeft = newPosition.ex - newPosition.offsetX;
-      let newTop = newPosition.ey - newPosition.offsetY;
-      console.log(newPosition);
-      console.log(objToMove);
-      console.log(
-        { x: newPosition.ex, nx: newPosition.offsetX },
-        { x: newPosition.ey, y: newPosition.offsetY }
-      );
-
-      objToMove?.set({
-        left: 200,
-        top: 200,
-      });
-
-      // console.log(objToMove);
+      objToMove?.set({ ...data.newPosition });
       canvas.renderAll();
-
-      // console.log(findObjectByUuid(canvas.getObjects("path"), data.target));
     });
     canvas.on("path:created", (e: any) => {
       canvas.renderAll();
