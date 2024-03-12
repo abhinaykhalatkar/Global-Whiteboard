@@ -2,8 +2,28 @@ import React, { useState, useEffect } from "react";
 import { fabric } from "fabric";
 import { io } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
+import { Object } from "fabric/fabric-impl";
+import { UUID } from "crypto";
 
 interface WhiteboardProps {}
+interface MyObject {
+  [key: string]: any;
+}
+
+interface CustomFabricObject extends fabric.Object {
+  uuidv4: UUID;
+  target: UUID;
+}
+type CustomFabricEvent = {
+  target: { uuidv4: UUID };
+  transform: {
+    target: any;
+  };
+};
+type recivedObjectData = {
+  target: UUID;
+  newPosition: fabric.Path;
+};
 const socket = io(`${process.env.REACT_APP_SERVER_LINK}`);
 const Whiteboard: React.FC<WhiteboardProps> = () => {
   const [canvas, setCanvas] = useState<fabric.Canvas>(
@@ -13,7 +33,6 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
       backgroundColor: "gray",
     })
   );
-  const [isAlreadyRan, setIsAlreadyRan] = useState(false);
 
   const setBlankCanvas = () => {
     setCanvas(
@@ -42,51 +61,83 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     canvas.remove(...canvas.getObjects());
     canvas.renderAll();
   };
-  interface MyObject {
-    [key: string]: any;
-  }
+
   function findObjectByUuid(array: MyObject[], uuidv4: string) {
     return array.find((obj) => obj["uuidv4"] === uuidv4);
+  }
+  function setUuidOnObject(object: MyObject) {
+    let uuid = uuidv4();
+    object.set("uuidv4", uuid);
+    return uuid;
   }
   useEffect(() => {
     setBlankCanvas();
   }, []);
   useEffect(() => {
-    // if (!canvas) return;
-    canvas.on("object:modified", (e: any) => {
-      // canvas.renderAll();
-      socket.emit("drawMoved", {
-        target: e.target.uuidv4,
-        newPosition: e.transform.target,
-      });
-    });
-    socket.on("drawMoved", (data) => {
-      let objToMove: any = findObjectByUuid(
-        canvas.getObjects("path"),
-        data.target
-      );
-      objToMove?.set({ ...data.newPosition });
+    //canvas event
+
+    canvas.on(
+      "object:modified",
+      (e: fabric.IEvent<MouseEvent> | CustomFabricEvent) => {
+        // canvas.renderAll();
+        if (e?.transform?.target?._objects) {
+          //for multi object
+          console.log(e.transform.target._objects);
+          let objects: CustomFabricObject[] = e.transform.target
+            ._objects as CustomFabricObject[];
+          console.log(objects);
+          socket.emit(
+            "drawMoved",
+            objects.map((el) => {
+              return { target: el.uuidv4, newPosition: el };
+            })
+          );
+        } else if (!e.transform?.target._objects) {
+          //for single object
+          if (!(e.target && "uuidv4" in e.target)) return;
+          socket.emit("drawMoved", {
+            target: e.target.uuidv4,
+            newPosition: e.transform?.target,
+          });
+        }
+      }
+    );
+
+    socket.on("drawMoved", (data: recivedObjectData[] | recivedObjectData) => {
+      console.log(data);
+      if (Array.isArray(data)) {
+        console.log(data.length);
+        for (let i = 0; i < data.length; i++) {
+          findObjectByUuid(canvas.getObjects("path"), data[i].target)?.set({
+            ...data[i].newPosition,
+          });
+        }
+      } else {
+        let objToMove = findObjectByUuid(
+          canvas.getObjects("path"),
+          data.target
+        );
+        console.log(data);
+        objToMove?.set({ ...data.newPosition });
+        canvas.renderAll();
+      }
+
+      // objToMove?.set({ ...data.newPosition });
       canvas.renderAll();
     });
+    //canvas event
     canvas.on("path:created", (e: any) => {
       canvas.renderAll();
-      let uuid = uuidv4();
-      (canvas.item(canvas.getObjects().length - 1) as any).set("uuidv4", uuid);
+      let uuid = setUuidOnObject(
+        canvas.item(canvas.getObjects().length - 1) as MyObject
+      );
       const path = e.path as fabric.Path;
+      console.log(path);
       if (path) {
-        socket.emit("drawing", { path, uuid });
+        socket.emit("drawing", { path: path, uuid: uuid });
       }
     });
-    socket.on("connect", () => {
-      console.log("Connected to server");
-    });
-    socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
-    socket.on("clearCanvas", () => {
-      handleClearCanvas();
-    });
-
+    //event socket listener
     socket.on("drawing", (data: { path: fabric.Path; uuid: string }) => {
       const path = new fabric.Path(data.path.path, { ...data.path });
       canvas.add(path);
@@ -95,6 +146,16 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
         "uuidv4",
         data.uuid
       );
+    });
+
+    socket.on("connect", () => {
+      console.log("Connected to server");
+    });
+    socket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+    socket.on("clearCanvas", () => {
+      handleClearCanvas();
     });
   }, [canvas]);
 
