@@ -13,6 +13,7 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
       backgroundColor: "gray",
     })
   );
+  const [isAlreadyRan, setIsAlreadyRan] = useState(false);
 
   const setBlankCanvas = () => {
     setCanvas(
@@ -41,19 +42,64 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     canvas.remove(...canvas.getObjects());
     canvas.renderAll();
   };
-
+  interface MyObject {
+    [key: string]: any;
+  }
+  function findObjectByUuid(array: MyObject[], uuidv4: string) {
+    return array.find((obj) => obj["uuidv4"] === uuidv4);
+  }
   useEffect(() => {
     setBlankCanvas();
   }, []);
   useEffect(() => {
     if (!canvas) return;
     canvas.on("object:modified", (e: any) => {
-      socket.emit("drawMoved", { target: e.target, newPosition: e.transform });
+      canvas.renderAll();
+      socket.emit("drawMoved", {
+        target: e.target.uuidv4,
+        newPosition: e.transform,
+      });
+      let movedObject = findObjectByUuid(
+        canvas.getObjects("path"),
+        e.target.uuidv4
+      );
+      console.log(movedObject);
+      // let newPosition = e.transform;
+      // console.log(newPosition);
+    });
+    socket.on("drawMoved", (data) => {
+      let newPosition = data.newPosition;
+
+      let objToMove: any = findObjectByUuid(
+        canvas.getObjects("path"),
+        data.target
+      );
+      let newLeft = newPosition.ex - newPosition.offsetX;
+      let newTop = newPosition.ey - newPosition.offsetY;
+      console.log(newPosition);
+      console.log(objToMove);
+      console.log(
+        { x: newPosition.ex, nx: newPosition.offsetX },
+        { x: newPosition.ey, y: newPosition.offsetY }
+      );
+
+      objToMove?.set({
+        left: 200,
+        top: 200,
+      });
+
+      // console.log(objToMove);
+      canvas.renderAll();
+
+      // console.log(findObjectByUuid(canvas.getObjects("path"), data.target));
     });
     canvas.on("path:created", (e: any) => {
+      canvas.renderAll();
+      let uuid = uuidv4();
+      (canvas.item(canvas.getObjects().length - 1) as any).set("uuidv4", uuid);
       const path = e.path as fabric.Path;
       if (path) {
-        socket.emit("drawing", path);
+        socket.emit("drawing", { path, uuid });
       }
     });
     socket.on("connect", () => {
@@ -62,16 +108,18 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     socket.on("disconnect", () => {
       console.log("Disconnected from server");
     });
-    socket.on("clearCanvas", (data) => {
+    socket.on("clearCanvas", () => {
       handleClearCanvas();
     });
-    socket.on("drawMoved", (data) => {
-      console.log(data);
-    });
-    socket.on("drawing", (data: fabric.Path) => {
-      const path = new fabric.Path(data.path, { ...data });
+
+    socket.on("drawing", (data: { path: fabric.Path; uuid: string }) => {
+      const path = new fabric.Path(data.path.path, { ...data.path });
       canvas.add(path);
       canvas.renderAll();
+      (canvas.item(canvas.getObjects().length - 1) as any).set(
+        "uuidv4",
+        data.uuid
+      );
     });
   }, [canvas]);
 

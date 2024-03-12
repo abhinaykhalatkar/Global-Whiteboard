@@ -1,4 +1,5 @@
 export default function socketRoutes(socket: any) {
+  let x = false;
   socket.on("disconnect", () => {
     console.log("user disconnected");
   });
