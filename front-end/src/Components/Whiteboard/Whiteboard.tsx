@@ -79,20 +79,24 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
     canvas.on(
       "object:modified",
       (e: fabric.IEvent<MouseEvent> | CustomFabricEvent) => {
-        // canvas.renderAll();
+        canvas.renderAll();
         if (e?.transform?.target?._objects) {
           //for multi object
           let objects: CustomFabricObject[] = e.transform.target
             ._objects as CustomFabricObject[];
           socket.emit(
             "drawMoved",
-            objects.map((el) => {
+            objects.map((el, i) => {
+              if (i === 0) {
+                console.log(el);
+              }
               return { target: el.uuidv4, newPosition: el };
             })
           );
         } else if (!e.transform?.target._objects) {
           //for single object
           if (!(e.target && "uuidv4" in e.target)) return;
+          console.log(e.transform?.target);
           socket.emit("drawMoved", {
             target: e.target.uuidv4,
             newPosition: e.transform?.target,
@@ -107,16 +111,21 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
           findObjectByUuid(canvas.getObjects("path"), data[i].target)?.set({
             ...data[i].newPosition,
           });
+          canvas.renderAll();
+          console.log(
+            findObjectByUuid(canvas.getObjects("path"), data[i].target)
+          );
         }
       } else {
         let objToMove = findObjectByUuid(
           canvas.getObjects("path"),
           data.target
         );
+        console.log({ ...data.newPosition });
 
         objToMove?.set({ ...data.newPosition });
+        canvas.renderAll();
       }
-      canvas.renderAll();
     });
     //canvas event
     canvas.on("path:created", (e: any) => {
@@ -125,7 +134,6 @@ const Whiteboard: React.FC<WhiteboardProps> = () => {
         canvas.item(canvas.getObjects().length - 1) as MyObject
       );
       const path = e.path as fabric.Path;
-      console.log(path);
       if (path) {
         socket.emit("drawing", { path: path, uuid: uuid });
       }
